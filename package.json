@@ -1,0 +1,33 @@
+{
+  "name": "@y-core/foundry",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "lint": "biome check src/",
+    "lint:fix": "biome check --write src/",
+    "test": "bun test",
+    "check": "bun run typecheck && bun run lint && bun test",
+    "release": "bun run scripts/release.ts",
+    "cf:sync": "bun src/sync/cli.ts sync",
+    "cf:status": "bun src/sync/cli.ts status",
+    "cf:sync:dry": "bun src/sync/cli.ts sync --dry-run"
+  },
+  "dependencies": {
+    "@y-core/forge": "github:y-core/forge#v0.0.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.15",
+    "@typescript/native-preview": "^7.0.0-dev.20260517.1"
+  },
+  "exports": {
+    "./sync": {
+      "types": "./src/sync/mod.ts",
+      "import": "./src/sync/mod.ts"
+    }
+  },
+  "files": [
+    "src/sync/",
+    "!**/*.test.ts"
+  ]
+}
