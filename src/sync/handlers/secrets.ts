@@ -36,44 +36,44 @@ export function createSecretsHandler(configPath = "."): ResourceHandler<SecretEn
     },
 
     async reconcile(entries, ctx): Promise<ReconcileResult<SecretEntry>> {
-      if (entries.length === 0) return { entries: [], results: [] };
+      if (entries.length === 0) return { entries, results: [] };
 
       const client = createCfClient(ctx.auth, ctx.fetch);
-      const [existing, listErr] = await client.get<CfWorkerSecret[]>(
+      const listResult = await client.get<CfWorkerSecret[]>(
         `/accounts/${ctx.auth.accountId}/workers/scripts/${ctx.scriptName}/secrets`,
       );
 
       const results: SyncResult[] = [];
 
-      if (listErr) {
+      if (!listResult.ok) {
         for (const entry of entries) {
-          results.push({ resourceType: "secrets", binding: entry.name, action: "error", detail: listErr.message });
+          results.push({ resourceType: "secrets", binding: entry.name, remoteName: entry.name, action: "error", detail: listResult.error.message });
         }
         return { entries, results };
       }
 
-      const remoteNames = new Set((existing ?? []).map((s) => s.name));
+      const remoteNames = new Set(listResult.data.map((s) => s.name));
 
       for (const entry of entries) {
         if (remoteNames.has(entry.name)) {
-          results.push({ resourceType: "secrets", binding: entry.name, action: "exists" });
+          results.push({ resourceType: "secrets", binding: entry.name, remoteName: entry.name, action: "exists" });
           continue;
         }
 
         if (ctx.dryRun) {
-          results.push({ resourceType: "secrets", binding: entry.name, action: "skipped", detail: "dry-run" });
+          results.push({ resourceType: "secrets", binding: entry.name, remoteName: entry.name, action: "skipped", detail: "dry-run" });
           continue;
         }
 
-        const [, putErr] = await client.put<unknown>(
+        const putResult = await client.put<unknown>(
           `/accounts/${ctx.auth.accountId}/workers/scripts/${ctx.scriptName}/secrets`,
           { name: entry.name, text: entry.value, type: "secret_text" },
         );
 
-        if (putErr) {
-          results.push({ resourceType: "secrets", binding: entry.name, action: "error", detail: putErr.message });
+        if (!putResult.ok) {
+          results.push({ resourceType: "secrets", binding: entry.name, remoteName: entry.name, action: "error", detail: putResult.error.message });
         } else {
-          results.push({ resourceType: "secrets", binding: entry.name, action: "created" });
+          results.push({ resourceType: "secrets", binding: entry.name, remoteName: entry.name, action: "created" });
         }
       }
 

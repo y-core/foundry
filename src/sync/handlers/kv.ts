@@ -15,57 +15,56 @@ export const kvHandler: ResourceHandler<KvNamespaceConfig> = {
     if (entries.length === 0) return { entries: [], results: [] };
 
     const client = createCfClient(ctx.auth, ctx.fetch);
-    const [existing, listErr] = await client.get<CfKvNamespace[]>(
+    const listResult = await client.get<CfKvNamespace[]>(
       `/accounts/${ctx.auth.accountId}/storage/kv/namespaces?per_page=100`,
     );
 
     const updated: KvNamespaceConfig[] = [];
     const results: SyncResult[] = [];
 
-    if (listErr) {
+    if (!listResult.ok) {
       for (const entry of entries) {
-        results.push({ resourceType: "kv_namespaces", binding: entry.binding, action: "error", detail: listErr.message });
+        results.push({ resourceType: "kv_namespaces", binding: entry.binding, action: "error", detail: listResult.error.message });
         updated.push(entry);
       }
       return { entries: updated, results };
     }
 
-    const remoteByTitle = new Map((existing ?? []).map((ns) => [ns.title, ns]));
+    const remoteByTitle = new Map(listResult.data.map((ns) => [ns.title, ns]));
 
     for (const entry of entries) {
       const remoteName = ctx.prefix ? `${ctx.prefix}_${entry.binding}` : entry.binding;
 
-      // If already has an ID that exists remotely, treat as exists
       if (entry.id && remoteByTitle.has(remoteName)) {
-        results.push({ resourceType: "kv_namespaces", binding: entry.binding, action: "exists", remoteId: entry.id });
+        results.push({ resourceType: "kv_namespaces", binding: entry.binding, remoteName, action: "exists", remoteId: entry.id });
         updated.push(entry);
         continue;
       }
 
       const existing_ = remoteByTitle.get(remoteName);
       if (existing_) {
-        results.push({ resourceType: "kv_namespaces", binding: entry.binding, action: "exists", remoteId: existing_.id });
+        results.push({ resourceType: "kv_namespaces", binding: entry.binding, remoteName, action: "exists", remoteId: existing_.id });
         updated.push({ ...entry, id: existing_.id });
         continue;
       }
 
       if (ctx.dryRun) {
-        results.push({ resourceType: "kv_namespaces", binding: entry.binding, action: "skipped", detail: "dry-run" });
+        results.push({ resourceType: "kv_namespaces", binding: entry.binding, remoteName, action: "unavailable" });
         updated.push(entry);
         continue;
       }
 
-      const [created, createErr] = await client.post<CfKvNamespace>(
+      const createResult = await client.post<CfKvNamespace>(
         `/accounts/${ctx.auth.accountId}/storage/kv/namespaces`,
         { title: remoteName },
       );
 
-      if (createErr) {
-        results.push({ resourceType: "kv_namespaces", binding: entry.binding, action: "error", detail: createErr.message });
+      if (!createResult.ok) {
+        results.push({ resourceType: "kv_namespaces", binding: entry.binding, remoteName, action: "error", detail: createResult.error.message });
         updated.push(entry);
-      } else if (created) {
-        results.push({ resourceType: "kv_namespaces", binding: entry.binding, action: "created", remoteId: created.id });
-        updated.push({ ...entry, id: created.id });
+      } else {
+        results.push({ resourceType: "kv_namespaces", binding: entry.binding, remoteName, action: "created", remoteId: createResult.data.id });
+        updated.push({ ...entry, id: createResult.data.id });
       }
     }
 

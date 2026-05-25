@@ -38,6 +38,7 @@ describe("varsHandler.reconcile()", () => {
     const fetchFn = makeFetch([{ type: "plain_text", name: "EMAIL", text: "x@y.com" }]);
     const res = await varsHandler.reconcile([{ name: "EMAIL", value: "x@y.com" }], makeCtx({ fetch: fetchFn }));
     expect(res.results[0].action).toBe("exists");
+    expect(res.results[0].remoteName).toBe("EMAIL");
   });
 
   it("updates vars not in remote", async () => {

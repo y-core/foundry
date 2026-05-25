@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 import { addCommand, createCommand, execute } from "@y-core/forge/cli";
 import { createStatusCommand, createSyncCommand } from "./mod";
 

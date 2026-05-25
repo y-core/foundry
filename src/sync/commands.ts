@@ -21,7 +21,7 @@ function resolveAuth(flags: Record<string, string | boolean | undefined>): CfAut
   const apiToken = (flags["api-token"] as string | undefined) ?? env.CLOUDFLARE_API_TOKEN;
 
   if (!accountId) throw new CliError("invalid-args", "Missing account ID. Set --account-id or CLOUDFLARE_ACCOUNT_ID");
-  if (!apiToken) throw new CliError("invalid-args", "Missing API token. Set --api-token or CLOUDFLARE_API_TOKEN");
+  if (!apiToken) throw new CliError("invalid-args", "Missing API token. Set --api-token or CLOUDFLARE_API_TOKEN; https://dash.cloudflare.com/profile/api-tokens");
 
   return { accountId, apiToken };
 }
@@ -34,6 +34,7 @@ function printResults(results: SyncResult[]): void {
   const rows = results.map((r) => ({
     Type: r.resourceType,
     Binding: r.binding,
+    "Remote Name": r.remoteName ?? "",
     Action: r.action,
     "Remote ID": r.remoteId ?? "",
     Detail: r.detail ?? "",

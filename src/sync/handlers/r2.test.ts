@@ -30,6 +30,7 @@ describe("r2Handler.reconcile()", () => {
   it("reports exists when bucket found", async () => {
     const res = await r2Handler.reconcile([{ binding: "MY_BUCKET", bucket_name: "my-bucket" }], makeCtx({ fetch: makeFetch(["my-bucket"]) }));
     expect(res.results[0].action).toBe("exists");
+    expect(res.results[0].remoteName).toBe("my-bucket");
   });
 
   it("creates bucket when not found", async () => {
@@ -39,7 +40,8 @@ describe("r2Handler.reconcile()", () => {
 
   it("skips in dry-run", async () => {
     const res = await r2Handler.reconcile([{ binding: "MY_BUCKET" }], makeCtx({ fetch: makeFetch([]), dryRun: true }));
-    expect(res.results[0].action).toBe("skipped");
+    expect(res.results[0].action).toBe("unavailable");
+    expect(res.results[0].remoteName).toBe("my-bucket");
   });
 
   it("reports error on creation failure", async () => {

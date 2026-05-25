@@ -37,6 +37,7 @@ describe("d1Handler.reconcile()", () => {
     const res = await d1Handler.reconcile([{ binding: "MY_DB" }], makeCtx({ fetch: fetchFn }));
     expect(res.results[0].action).toBe("exists");
     expect(res.results[0].remoteId).toBe("db-uuid");
+    expect(res.results[0].remoteName).toBe("MY_DB");
   });
 
   it("creates db when not found", async () => {
@@ -48,6 +49,7 @@ describe("d1Handler.reconcile()", () => {
 
   it("skips in dry-run", async () => {
     const res = await d1Handler.reconcile([{ binding: "DB" }], makeCtx({ fetch: makeFetch([]), dryRun: true }));
-    expect(res.results[0].action).toBe("skipped");
+    expect(res.results[0].action).toBe("unavailable");
+    expect(res.results[0].remoteName).toBe("DB");
   });
 });

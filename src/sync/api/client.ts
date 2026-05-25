@@ -25,22 +25,22 @@ export function createCfClient(auth: CfAuth, fetchFn: typeof globalThis.fetch = 
         body: body !== undefined ? JSON.stringify(body) : undefined,
       });
     } catch (err) {
-      return [null, new CfApiClientError("network", `Network error: ${(err as Error).message}`)];
+      return { ok: false, error: new CfApiClientError("network", `Network error: ${(err as Error).message}`) };
     }
 
     let data: CfApiResponse<T>;
     try {
       data = (await res.json()) as CfApiResponse<T>;
     } catch {
-      return [null, new CfApiClientError("parse", `Failed to parse response (HTTP ${res.status})`, { statusCode: res.status })];
+      return { ok: false, error: new CfApiClientError("parse", `Failed to parse response (HTTP ${res.status})`, { statusCode: res.status }) };
     }
 
     if (!data.success) {
       const msg = data.errors?.[0]?.message ?? `API error (HTTP ${res.status})`;
-      return [null, new CfApiClientError("api", msg, { statusCode: res.status, cfErrors: data.errors })];
+      return { ok: false, error: new CfApiClientError("api", msg, { statusCode: res.status, cfErrors: data.errors }) };
     }
 
-    return [data.result, null];
+    return { ok: true, data: data.result };
   }
 
   return {

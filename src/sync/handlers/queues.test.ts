@@ -37,6 +37,7 @@ describe("queuesHandler.reconcile()", () => {
     const res = await queuesHandler.reconcile([{ binding: "MY_QUEUE", queue: "my-queue" }], makeCtx({ fetch: fetchFn }));
     expect(res.results[0].action).toBe("exists");
     expect(res.results[0].remoteId).toBe("q-1");
+    expect(res.results[0].remoteName).toBe("my-queue");
   });
 
   it("creates queue when not found", async () => {
@@ -48,6 +49,7 @@ describe("queuesHandler.reconcile()", () => {
 
   it("skips in dry-run", async () => {
     const res = await queuesHandler.reconcile([{ binding: "Q" }], makeCtx({ fetch: makeFetch([]), dryRun: true }));
-    expect(res.results[0].action).toBe("skipped");
+    expect(res.results[0].action).toBe("unavailable");
+    expect(res.results[0].remoteName).toBe("q");
   });
 });

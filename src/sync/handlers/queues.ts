@@ -15,22 +15,22 @@ export const queuesHandler: ResourceHandler<QueueProducerConfig> = {
     if (entries.length === 0) return { entries: [], results: [] };
 
     const client = createCfClient(ctx.auth, ctx.fetch);
-    const [existing, listErr] = await client.get<CfQueue[]>(
+    const listResult = await client.get<CfQueue[]>(
       `/accounts/${ctx.auth.accountId}/queues?per_page=100`,
     );
 
     const updated: QueueProducerConfig[] = [];
     const results: SyncResult[] = [];
 
-    if (listErr) {
+    if (!listResult.ok) {
       for (const entry of entries) {
-        results.push({ resourceType: "queues", binding: entry.binding, action: "error", detail: listErr.message });
+        results.push({ resourceType: "queues", binding: entry.binding, action: "error", detail: listResult.error.message });
         updated.push(entry);
       }
       return { entries: updated, results };
     }
 
-    const remoteByName = new Map((existing ?? []).map((q) => [q.queue_name, q]));
+    const remoteByName = new Map(listResult.data.map((q) => [q.queue_name, q]));
 
     for (const entry of entries) {
       const remoteName = ctx.prefix
@@ -40,28 +40,28 @@ export const queuesHandler: ResourceHandler<QueueProducerConfig> = {
       const existing_ = remoteByName.get(remoteName);
       if (existing_ || entry.queue_id) {
         const id = existing_ ? existing_.queue_id : (entry.queue_id as string);
-        results.push({ resourceType: "queues", binding: entry.binding, action: "exists", remoteId: id });
+        results.push({ resourceType: "queues", binding: entry.binding, remoteName, action: "exists", remoteId: id });
         updated.push({ ...entry, queue: remoteName, queue_id: id });
         continue;
       }
 
       if (ctx.dryRun) {
-        results.push({ resourceType: "queues", binding: entry.binding, action: "skipped", detail: "dry-run" });
+        results.push({ resourceType: "queues", binding: entry.binding, remoteName, action: "unavailable" });
         updated.push(entry);
         continue;
       }
 
-      const [created, createErr] = await client.post<CfQueue>(
+      const createResult = await client.post<CfQueue>(
         `/accounts/${ctx.auth.accountId}/queues`,
         { queue_name: remoteName },
       );
 
-      if (createErr) {
-        results.push({ resourceType: "queues", binding: entry.binding, action: "error", detail: createErr.message });
+      if (!createResult.ok) {
+        results.push({ resourceType: "queues", binding: entry.binding, remoteName, action: "error", detail: createResult.error.message });
         updated.push(entry);
-      } else if (created) {
-        results.push({ resourceType: "queues", binding: entry.binding, action: "created", remoteId: created.queue_id });
-        updated.push({ ...entry, queue: remoteName, queue_id: created.queue_id });
+      } else {
+        results.push({ resourceType: "queues", binding: entry.binding, remoteName, action: "created", remoteId: createResult.data.queue_id });
+        updated.push({ ...entry, queue: remoteName, queue_id: createResult.data.queue_id });
       }
     }
 

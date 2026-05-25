@@ -34,6 +34,7 @@ describe("secretsHandler.reconcile()", () => {
     const fetchFn = makeFetch([{ name: "SECRET_KEY", type: "secret_text" }]);
     const res = await handler.reconcile([{ name: "SECRET_KEY", value: "val" }], makeCtx({ fetch: fetchFn }));
     expect(res.results[0].action).toBe("exists");
+    expect(res.results[0].remoteName).toBe("SECRET_KEY");
   });
 
   it("creates secret when not found", async () => {

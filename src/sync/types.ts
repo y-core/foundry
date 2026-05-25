@@ -32,11 +32,12 @@ export type PrefixStrategy =
 
 export type ResolvedPrefix = string; // empty string = no prefix
 
-export type SyncAction = "exists" | "created" | "updated" | "skipped" | "error";
+export type SyncAction = "exists" | "created" | "updated" | "skipped" | "unavailable" | "error";
 
 export interface SyncResult {
   resourceType: ResourceType;
   binding: string;
+  remoteName?: string;
   action: SyncAction;
   remoteId?: string;
   detail?: string;

@@ -20,9 +20,9 @@ describe("createCfClient()", () => {
   it("returns data on success", async () => {
     const fetchFn = makeFetch(200, { success: true, errors: [], messages: [], result: { id: "abc" } });
     const client = createCfClient(AUTH, fetchFn);
-    const [data, err] = await client.get<{ id: string }>("/accounts/acc/kv");
-    expect(err).toBeNull();
-    expect(data?.id).toBe("abc");
+    const r = await client.get<{ id: string }>("/accounts/acc/kv");
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.data.id).toBe("abc");
   });
 
   it("sends Authorization header", async () => {
@@ -39,17 +39,19 @@ describe("createCfClient()", () => {
 
   it("returns network error on fetch throw", async () => {
     const client = createCfClient(AUTH, makeNetworkError());
-    const [data, err] = await client.get("/path");
-    expect(data).toBeNull();
-    expect(err).toBeInstanceOf(CfApiClientError);
-    expect(err?.kind).toBe("network");
+    const r = await client.get("/path");
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error).toBeInstanceOf(CfApiClientError);
+      expect(r.error.kind).toBe("network");
+    }
   });
 
   it("returns parse error on bad JSON", async () => {
     const client = createCfClient(AUTH, makeBadJson());
-    const [data, err] = await client.get("/path");
-    expect(data).toBeNull();
-    expect(err?.kind).toBe("parse");
+    const r = await client.get("/path");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.kind).toBe("parse");
   });
 
   it("returns api error when success=false", async () => {
@@ -60,11 +62,13 @@ describe("createCfClient()", () => {
       result: null,
     });
     const client = createCfClient(AUTH, fetchFn);
-    const [data, err] = await client.get("/path");
-    expect(data).toBeNull();
-    expect(err?.kind).toBe("api");
-    expect(err?.message).toContain("Authentication error");
-    expect(err?.cfErrors?.[0]?.code).toBe(10000);
+    const r = await client.get("/path");
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error.kind).toBe("api");
+      expect(r.error.message).toContain("Authentication error");
+      expect(r.error.cfErrors?.[0]?.code).toBe(10000);
+    }
   });
 
   it("sends body for POST requests", async () => {

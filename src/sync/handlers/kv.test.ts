@@ -53,6 +53,7 @@ describe("kvHandler.reconcile()", () => {
     const res = await kvHandler.reconcile([{ binding: "MY_KV" }], ctx);
     expect(res.results[0].action).toBe("exists");
     expect(res.results[0].remoteId).toBe("ns-1");
+    expect(res.results[0].remoteName).toBe("MY_KV");
   });
 
   it("creates namespace when not found", async () => {
@@ -68,7 +69,8 @@ describe("kvHandler.reconcile()", () => {
     const fetchFn = makeFetch([]);
     const ctx = makeCtx({ fetch: fetchFn, dryRun: true });
     const res = await kvHandler.reconcile([{ binding: "MY_KV" }], ctx);
-    expect(res.results[0].action).toBe("skipped");
+    expect(res.results[0].action).toBe("unavailable");
+    expect(res.results[0].remoteName).toBe("MY_KV");
   });
 
   it("applies prefix to remote name", async () => {
@@ -81,8 +83,9 @@ describe("kvHandler.reconcile()", () => {
       return new Response(JSON.stringify({ success: true, errors: [], messages: [], result: [] }));
     };
     const ctx = makeCtx({ fetch: fetchFn, prefix: "PROJ" });
-    await kvHandler.reconcile([{ binding: "MY_KV" }], ctx);
+    const res = await kvHandler.reconcile([{ binding: "MY_KV" }], ctx);
     expect(JSON.parse(capturedBody!).title).toBe("PROJ_MY_KV");
+    expect(res.results[0].remoteName).toBe("PROJ_MY_KV");
   });
 
   it("reports error when list API fails", async () => {
