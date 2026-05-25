@@ -13,6 +13,7 @@ function makeFetch(remoteBindings: unknown[], patchOk = true): typeof globalThis
   return async (_url, init) => {
     const method = (init?.method ?? "GET").toUpperCase();
     if (method === "PATCH") {
+      if (!(init?.body instanceof FormData)) throw new Error("PATCH must use FormData body");
       if (!patchOk) return new Response(JSON.stringify({ success: false, errors: [{ code: 1, message: "patch failed" }], messages: [], result: null }), { status: 400 });
       return new Response(JSON.stringify({ success: true, errors: [], messages: [], result: {} }));
     }

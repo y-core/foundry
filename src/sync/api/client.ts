@@ -16,13 +16,13 @@ export function createCfClient(auth: CfAuth, fetchFn: typeof globalThis.fetch = 
   async function request<T>(method: string, path: string, body?: unknown): Promise<Result<T, CfApiClientError>> {
     let res: Response;
     try {
+      const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
       res = await fetchFn(`${BASE_URL}${path}`, {
         method,
-        headers: {
-          Authorization: `Bearer ${auth.apiToken}`,
-          "Content-Type": "application/json",
-        },
-        body: body !== undefined ? JSON.stringify(body) : undefined,
+        headers: isFormData
+          ? { Authorization: `Bearer ${auth.apiToken}` }
+          : { Authorization: `Bearer ${auth.apiToken}`, "Content-Type": "application/json" },
+        body: body !== undefined ? (isFormData ? body : JSON.stringify(body)) : undefined,
       });
     } catch (err) {
       return { ok: false, error: new CfApiClientError("network", `Network error: ${(err as Error).message}`) };

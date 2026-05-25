@@ -61,9 +61,11 @@ export const varsHandler: ResourceHandler<VarEntry> = {
       ...entries.map((e) => ({ type: "plain_text", name: e.name, text: e.value })),
     ];
 
+    const form = new FormData();
+    form.append("settings", JSON.stringify({ bindings: newBindings }));
     const patchResult = await client.patch<unknown>(
       `/accounts/${ctx.auth.accountId}/workers/scripts/${ctx.scriptName}/settings`,
-      { bindings: newBindings },
+      form,
     );
 
     for (const entry of toUpdate) {
