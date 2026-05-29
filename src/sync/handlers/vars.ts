@@ -19,7 +19,7 @@ export const varsHandler: ResourceHandler<VarEntry> = {
 
     const client = createCfClient(ctx.auth, ctx.fetch);
     const getResult = await client.get<CfWorkerSettings>(
-      `/accounts/${ctx.auth.accountId}/workers/scripts/${ctx.scriptName}/settings`,
+      `/accounts/${encodeURIComponent(ctx.auth.accountId)}/workers/scripts/${encodeURIComponent(ctx.scriptName)}/settings`,
     );
 
     const results: SyncResult[] = [];
@@ -64,7 +64,7 @@ export const varsHandler: ResourceHandler<VarEntry> = {
     const form = new FormData();
     form.append("settings", JSON.stringify({ bindings: newBindings }));
     const patchResult = await client.patch<unknown>(
-      `/accounts/${ctx.auth.accountId}/workers/scripts/${ctx.scriptName}/settings`,
+      `/accounts/${encodeURIComponent(ctx.auth.accountId)}/workers/scripts/${encodeURIComponent(ctx.scriptName)}/settings`,
       form,
     );
 

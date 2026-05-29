@@ -11,7 +11,14 @@ function readDevVars(configPath: string): Record<string, string> {
   const devVarsPath = resolve(configPath, "../.dev.vars");
   if (!existsSync(devVarsPath)) return {};
 
-  const content = readFileSync(devVarsPath, "utf-8");
+  let content: string;
+  try {
+    content = readFileSync(devVarsPath, "utf-8");
+  } catch (err) {
+    console.warn(`[foundry] could not read ${devVarsPath}: ${(err as Error).message}`);
+    return {};
+  }
+
   const vars: Record<string, string> = {};
   for (const line of content.split("\n")) {
     const trimmed = line.trim();
@@ -19,7 +26,12 @@ function readDevVars(configPath: string): Record<string, string> {
     const eq = trimmed.indexOf("=");
     if (eq === -1) continue;
     const key = trimmed.slice(0, eq).trim();
-    const val = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, "");
+    const raw = trimmed.slice(eq + 1).trim();
+    // Strip surrounding quotes only when both ends share the same quote character;
+    // a mismatched pair like `"x'` is left verbatim.
+    const quoted =
+      raw.length >= 2 && (raw[0] === '"' || raw[0] === "'") && raw[raw.length - 1] === raw[0];
+    const val = quoted ? raw.slice(1, -1) : raw;
     if (key) vars[key] = val;
   }
   return vars;
@@ -40,7 +52,7 @@ export function createSecretsHandler(configPath = "."): ResourceHandler<SecretEn
 
       const client = createCfClient(ctx.auth, ctx.fetch);
       const listResult = await client.get<CfWorkerSecret[]>(
-        `/accounts/${ctx.auth.accountId}/workers/scripts/${ctx.scriptName}/secrets`,
+        `/accounts/${encodeURIComponent(ctx.auth.accountId)}/workers/scripts/${encodeURIComponent(ctx.scriptName)}/secrets`,
       );
 
       const results: SyncResult[] = [];
@@ -66,7 +78,7 @@ export function createSecretsHandler(configPath = "."): ResourceHandler<SecretEn
         }
 
         const putResult = await client.put<unknown>(
-          `/accounts/${ctx.auth.accountId}/workers/scripts/${ctx.scriptName}/secrets`,
+          `/accounts/${encodeURIComponent(ctx.auth.accountId)}/workers/scripts/${encodeURIComponent(ctx.scriptName)}/secrets`,
           { name: entry.name, text: entry.value, type: "secret_text" },
         );
 

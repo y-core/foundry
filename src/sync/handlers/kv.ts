@@ -15,8 +15,8 @@ export const kvHandler: ResourceHandler<KvNamespaceConfig> = {
     if (entries.length === 0) return { entries: [], results: [] };
 
     const client = createCfClient(ctx.auth, ctx.fetch);
-    const listResult = await client.get<CfKvNamespace[]>(
-      `/accounts/${ctx.auth.accountId}/storage/kv/namespaces?per_page=100`,
+    const listResult = await client.list<CfKvNamespace>(
+      `/accounts/${encodeURIComponent(ctx.auth.accountId)}/storage/kv/namespaces`,
     );
 
     const updated: KvNamespaceConfig[] = [];
@@ -55,7 +55,7 @@ export const kvHandler: ResourceHandler<KvNamespaceConfig> = {
       }
 
       const createResult = await client.post<CfKvNamespace>(
-        `/accounts/${ctx.auth.accountId}/storage/kv/namespaces`,
+        `/accounts/${encodeURIComponent(ctx.auth.accountId)}/storage/kv/namespaces`,
         { title: remoteName },
       );
 

@@ -15,8 +15,8 @@ export const queuesHandler: ResourceHandler<QueueProducerConfig> = {
     if (entries.length === 0) return { entries: [], results: [] };
 
     const client = createCfClient(ctx.auth, ctx.fetch);
-    const listResult = await client.get<CfQueue[]>(
-      `/accounts/${ctx.auth.accountId}/queues?per_page=100`,
+    const listResult = await client.list<CfQueue>(
+      `/accounts/${encodeURIComponent(ctx.auth.accountId)}/queues`,
     );
 
     const updated: QueueProducerConfig[] = [];
@@ -52,7 +52,7 @@ export const queuesHandler: ResourceHandler<QueueProducerConfig> = {
       }
 
       const createResult = await client.post<CfQueue>(
-        `/accounts/${ctx.auth.accountId}/queues`,
+        `/accounts/${encodeURIComponent(ctx.auth.accountId)}/queues`,
         { queue_name: remoteName },
       );
 

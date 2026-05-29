@@ -77,8 +77,26 @@ function mergeEntries(config: WranglerConfig, type: ResourceType, entries: unkno
       const producers = entries as QueueProducer;
       return { ...config, queues: { ...(config.queues ?? {}), producers } };
     }
-    // vars, secrets, and declarative handlers return entries unchanged (no ID to write back)
-    default:
+    // These resource types have no server-assigned ID to write back into the config.
+    case "vars":
+    case "secrets":
+    case "ratelimits":
+    case "durable_objects":
+    case "hyperdrive":
+    case "vectorize":
+    case "ai":
+    case "browser":
+    case "analytics_engine_datasets":
+    case "services":
+    case "send_email":
+    case "dispatch_namespaces":
+    case "mtls_certificates":
+    case "workflows":
+    case "pipelines":
       return config;
+    // Exhaustiveness guard: a new write-back ResourceType added without a case above
+    // makes `type` no longer assignable to `never`, surfacing as a compile error here.
+    default:
+      return ((_exhaustive: never): WranglerConfig => config)(type);
   }
 }

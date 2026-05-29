@@ -6,6 +6,7 @@ const BASE_URL = "https://api.cloudflare.com/client/v4";
 
 export interface CfClient {
   get<T>(path: string): Promise<Result<T, CfApiClientError>>;
+  list<T>(path: string): Promise<Result<T[], CfApiClientError>>;
   post<T>(path: string, body: unknown): Promise<Result<T, CfApiClientError>>;
   put<T>(path: string, body: unknown): Promise<Result<T, CfApiClientError>>;
   patch<T>(path: string, body: unknown): Promise<Result<T, CfApiClientError>>;
@@ -13,7 +14,11 @@ export interface CfClient {
 }
 
 export function createCfClient(auth: CfAuth, fetchFn: typeof globalThis.fetch = globalThis.fetch): CfClient {
-  async function request<T>(method: string, path: string, body?: unknown): Promise<Result<T, CfApiClientError>> {
+  async function requestEnvelope<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+  ): Promise<Result<CfApiResponse<T>, CfApiClientError>> {
     let res: Response;
     try {
       const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
@@ -40,11 +45,41 @@ export function createCfClient(auth: CfAuth, fetchFn: typeof globalThis.fetch = 
       return { ok: false, error: new CfApiClientError("api", msg, { statusCode: res.status, cfErrors: data.errors }) };
     }
 
-    return { ok: true, data: data.result };
+    return { ok: true, data };
+  }
+
+  async function request<T>(method: string, path: string, body?: unknown): Promise<Result<T, CfApiClientError>> {
+    const res = await requestEnvelope<T>(method, path, body);
+    if (!res.ok) return res;
+    return { ok: true, data: res.data.result };
+  }
+
+  // Follows Cloudflare's `result_info` pagination, accumulating every page into one array.
+  async function list<T>(path: string): Promise<Result<T[], CfApiClientError>> {
+    const perPage = 100;
+    const sep = path.includes("?") ? "&" : "?";
+    const items: T[] = [];
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+      const res = await requestEnvelope<T[]>("GET", `${path}${sep}per_page=${perPage}&page=${page}`);
+      if (!res.ok) return res;
+
+      const pageItems = res.data.result ?? [];
+      items.push(...pageItems);
+
+      const info = res.data.result_info;
+      hasMore = !!info && pageItems.length > 0 && items.length < info.total_count;
+      page++;
+    }
+
+    return { ok: true, data: items };
   }
 
   return {
     get: <T>(path: string) => request<T>("GET", path),
+    list: <T>(path: string) => list<T>(path),
     post: <T>(path: string, body: unknown) => request<T>("POST", path, body),
     put: <T>(path: string, body: unknown) => request<T>("PUT", path, body),
     patch: <T>(path: string, body: unknown) => request<T>("PATCH", path, body),

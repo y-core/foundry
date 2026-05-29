@@ -15,8 +15,8 @@ export const d1Handler: ResourceHandler<D1DatabaseConfig> = {
     if (entries.length === 0) return { entries: [], results: [] };
 
     const client = createCfClient(ctx.auth, ctx.fetch);
-    const listResult = await client.get<CfD1Database[]>(
-      `/accounts/${ctx.auth.accountId}/d1/database?per_page=100`,
+    const listResult = await client.list<CfD1Database>(
+      `/accounts/${encodeURIComponent(ctx.auth.accountId)}/d1/database`,
     );
 
     const updated: D1DatabaseConfig[] = [];
@@ -50,7 +50,7 @@ export const d1Handler: ResourceHandler<D1DatabaseConfig> = {
       }
 
       const createResult = await client.post<CfD1Database>(
-        `/accounts/${ctx.auth.accountId}/d1/database`,
+        `/accounts/${encodeURIComponent(ctx.auth.accountId)}/d1/database`,
         { name: remoteName },
       );
 

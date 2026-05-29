@@ -16,7 +16,7 @@ export const r2Handler: ResourceHandler<R2BucketConfig> = {
 
     const client = createCfClient(ctx.auth, ctx.fetch);
     const listResult = await client.get<{ buckets: CfR2Bucket[] }>(
-      `/accounts/${ctx.auth.accountId}/r2/buckets`,
+      `/accounts/${encodeURIComponent(ctx.auth.accountId)}/r2/buckets`,
     );
 
     const updated: R2BucketConfig[] = [];
@@ -50,7 +50,7 @@ export const r2Handler: ResourceHandler<R2BucketConfig> = {
       }
 
       const createResult = await client.put<null>(
-        `/accounts/${ctx.auth.accountId}/r2/buckets/${remoteName}`,
+        `/accounts/${encodeURIComponent(ctx.auth.accountId)}/r2/buckets/${encodeURIComponent(remoteName)}`,
         {},
       );
 

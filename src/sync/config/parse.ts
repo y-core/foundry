@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { v } from "@y-core/forge/validation";
 import type { WranglerConfig } from "../types";
 
 // Minimal JSONC → JSON state machine:
@@ -58,11 +59,46 @@ export function stripJsonc(src: string): string {
   return out.replace(/,(\s*[}\]])/g, "$1");
 }
 
+// Permissive shape validation — wrangler configs carry many optional fields and
+// arbitrary extra keys, so we use loose objects and assert only the pieces the sync
+// handlers actually read. `name` is the one hard requirement.
+const WranglerConfigSchema = v.looseObject({
+  name: v.string('wrangler config must define a string "name"'),
+  vars: v.optional(v.record(v.string(), v.unknown())),
+  kv_namespaces: v.optional(v.array(v.looseObject({ binding: v.string() }))),
+  d1_databases: v.optional(v.array(v.looseObject({ binding: v.string() }))),
+  r2_buckets: v.optional(v.array(v.looseObject({ binding: v.string() }))),
+  queues: v.optional(
+    v.looseObject({
+      producers: v.optional(v.array(v.looseObject({ binding: v.string() }))),
+      consumers: v.optional(v.array(v.looseObject({ queue: v.string() }))),
+    }),
+  ),
+});
+
 export function parseWranglerConfig(configPath: string): WranglerConfig {
   const abs = resolve(configPath);
   const raw = readFileSync(abs, "utf-8");
   const json = stripJsonc(raw);
-  return JSON.parse(json) as WranglerConfig;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch (err) {
+    throw new Error(`malformed wrangler config at ${abs}: invalid JSON — ${(err as Error).message}`);
+  }
+
+  const result = v.safeParse(WranglerConfigSchema, parsed);
+  if (!result.success) {
+    const detail = result.issues
+      .map((issue) => `${v.getDotPath(issue) ?? "(root)"}: ${issue.message}`)
+      .join("; ");
+    throw new Error(`malformed wrangler config at ${abs}: ${detail}`);
+  }
+
+  // Return the original parsed object (not the validated output) so write-back keeps
+  // every field verbatim, including keys the schema does not enumerate.
+  return parsed as WranglerConfig;
 }
 
 export function writeWranglerConfig(configPath: string, config: WranglerConfig): void {
